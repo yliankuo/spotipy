@@ -293,7 +293,6 @@ class Spotify(object):
     def _get(self, url, args=None, payload=None, **kwargs):
         if args:
             kwargs.update(args)
-
         return self._internal_call("GET", url, payload, kwargs)
 
     def _post(self, url, args=None, payload=None, **kwargs):
@@ -602,7 +601,7 @@ class Spotify(object):
         """
         return self._get("me/playlists", limit=limit, offset=offset)
 
-    def playlist(self, playlist_id, fields=None, market=None, additional_types=("track",)):
+    def playlist(self, playlist_id, fields=None, market=None, additional_types=("track",), limit = 100):
         """ Gets playlist by id.
 
             Parameters:
@@ -614,12 +613,29 @@ class Spotify(object):
                                      valid types are: track and episode
         """
         plid = self._get_id("playlist", playlist_id)
-        return self._get(
+        results = self._get(
             "playlists/%s" % (plid),
             fields=fields,
             market=market,
             additional_types=",".join(additional_types),
         )
+        if limit == 100:
+            return results
+        else:
+            if limit == 0:
+                limit = results['tracks']['total']
+            else:
+                limit = min(limit, results['tracks']['total'])
+            results['tracks']['items'] = []
+            offset = 0
+            while limit > 0:
+                max_increment = min(limit,100)
+                query = self.playlist_items(playlist_id, limit = max_increment, offset = offset)
+                results['tracks']['items'].extend(query['items'])
+                offset += max_increment
+                limit -= max_increment
+
+            return results
 
     def playlist_tracks(
         self,
